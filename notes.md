@@ -11,4 +11,5 @@
 
 ## SSH/Unix
 
-- ssh -i [key pair file] ubuntu@[yourdomainnamehere] to connect
+- ssh -i [key pair file] ubuntu@[yourdomainnamehere] : connect to server
+- touch [file name] : make a new file
