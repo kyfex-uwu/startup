@@ -8,3 +8,7 @@
 	- mentions
 	- in-repo links
 	- colors, footnotes, alerts
+
+## SSH/Unix
+
+- ssh -i [key pair file] ubuntu@[yourdomainnamehere] to connect
