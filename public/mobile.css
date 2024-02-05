@@ -1,0 +1,25 @@
+html{
+  font-size:18px;
+}
+
+#navbar{
+  padding:1rem;
+
+  left:-100%;
+  top:0;
+  position:absolute;
+  background: var(--background-color);
+  box-shadow: 0 0 0.5rem #bbb8aa;
+  border-radius: 0 0 1rem 0;
+
+  transition: left 0.5s;
+}
+#navbar > span{
+  border-radius:0.5rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+#navbar-button{
+  display: block;
+}
