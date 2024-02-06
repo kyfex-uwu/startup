@@ -28,6 +28,9 @@ app.get("/login", (req, res) => {
 app.get("/register", (req, res) => {
   res.send(containerize("/views/register.html"));
 });
+app.get("/play", (req, res) => {
+  res.send(containerize("/views/play.html"));
+});
 
 app.listen(443);
 
