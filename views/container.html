@@ -9,24 +9,22 @@
 		<!--HEAD-->
 	</head>
 	<body>
-		<svg width="3rem" height="3rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-				id="navbar-button" style="background:var(--button-color2); border-radius: 0.5rem;">
-			<path d="M4 18L20 18" stroke="var(--background-color)" stroke-linecap="round" stroke-width="3"/>
-			<path d="M4 12L20 12" stroke="var(--background-color)" stroke-linecap="round" stroke-width="3"/>
-			<path d="M4 6L20 6" stroke="var(--background-color)" stroke-linecap="round" stroke-width="3"/>
+		<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="navbar-hamburger">
+			<path d="M4 18L20 18" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
+			<path d="M4 12L20 12" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
+			<path d="M4 6L20 6" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
 		</svg>
-		<div id="navbar">
+		<span id="navbar">
 			<img src="/public/meiket-icon.png" style="height:3rem; vertical-align:middle; padding:0 1rem;" class="hide-mobile">
-			<span>Home</span>
-			<span>About</span>
-			<span>Contact</span>
-
-			<!--<img id="main-logo" src="/public/meiket.png" style="height:3rem; float:right;">-->
-		</div>
+			<span class="navbutton">Home</span>
+			<span class="navbutton">About</span>
+			<span class="navbutton">Contact</span>
+		</span>
+		<span class="navbutton" style="float:right;">Login</span>
 		<!--BODY-->
 		<script>
 			const navbar = document.getElementById("navbar");
-			document.getElementById("navbar-button").onclick = e => {
+			document.getElementById("navbar-hamburger").onclick = e => {
 				navbar.style.left="0";
 				e.stopPropagation();
 			};

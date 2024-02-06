@@ -8,22 +8,30 @@ html{
   left:-100%;
   top:0;
   position:absolute;
-  background: var(--background-color);
+  background: var(--cream);
   box-shadow: 0 0 0.5rem #bbb8aa;
   border-radius: 0 0 1rem 0;
 
   transition: left 0.5s;
 }
-#navbar > span{
-  border-radius:0.5rem;
-  padding: 1rem 1.5rem;
-  margin-bottom: 0.3rem;
-  display: block;
+.navbutton{
+  display:block;
 }
-#navbar-button{
-  display: block;
+#navbar-hamburger{
+  display: inline-block;
+  width:3rem;
+  height:3rem;
+  background:var(--button-color);
+  border-radius: 0.5rem;
+  cursor:pointer;
+
+  box-shadow: inset 0 -5rem 0.5rem var(--button-color2);
+  transition: box-shadow 0.1s;
+}
+#navbar-hamburger:hover{
+  box-shadow: inset 0 -1rem 0.5rem var(--button-color2);
 }
 
 .hide-mobile{
-  display:none;
+  display:none !important;
 }
