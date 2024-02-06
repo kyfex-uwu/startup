@@ -5,6 +5,10 @@
 		<link rel="stylesheet" href="/public/main.css">
 		<link rel="stylesheet" href="/public/mobile.css" media="only screen and (max-width: 500px)">
 		<link rel="icon" type="image/x-icon" href="/public/meiket-icon.ico">
+		<script type="module">
+			import { reactive, html, watch } from 'https://esm.sh/@arrow-js/core';
+			window.arrow={ reactive, html, watch };
+		</script>
 		<title><!--TITLE--></title>
 		<!--HEAD-->
 	</head>
@@ -20,6 +24,7 @@
 			<span class="navbutton" onclick="window.location.assign('/about')">About</span>
 		</span>
 		<span class="navbutton" style="float:right;" onclick="window.location.assign('/login')">Login</span>
+		<div style=""></div>
 		<!--BODY-->
 		<script>
 			const navbar = document.getElementById("navbar");
