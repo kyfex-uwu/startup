@@ -13,3 +13,8 @@
 
 - ssh -i [key pair file] ubuntu@[yourdomainnamehere] : connect to server
 - touch [file name] : make a new file
+
+## uhh html/stage 1 of startup
+literally go to kyfexuwu.com, didnt really learn a lot hehe
+- started website!
+- added main (public/viewable) pages

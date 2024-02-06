@@ -12,4 +12,4 @@ It's a platform made with developers in mind, with built in tools to create both
 
 ![Meiket sketch](/docs/concept.jpg)
 
-[notes](notes.md)
+[notes](classwork/notes.md)
