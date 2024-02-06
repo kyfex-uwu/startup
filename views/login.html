@@ -1,0 +1,50 @@
+<!--TITLE-->login
+<!--HEAD-->
+<style type="text/css">
+	:root{
+		color: var(--cream);
+	}
+</style>
+<!--BODY-->
+<div style="height:3rem;"></div>
+<div style="
+		background:#4287f5;
+		width:min(calc(100% - 6rem),calc(20rem + 30%));
+		margin:auto;
+		padding:3rem;
+		border-radius: 1rem;
+		">
+	<img src="/public/meiket.png" style="height:3rem; display:block; margin:auto; margin-bottom: 1rem;">
+	<form onsubmit="return login()==69;">
+		<div style="text-align:center;">
+			<span style="display:inline-block;">
+				<label for="username" style="margin-right:1rem;">Username:</label>
+				<input type="text" name="username" placeholder="username" id="login-username">
+			</span>
+			<span style="display:inline-block;">
+				<label for="password" style="margin-right:1rem;">Password:</label>
+				<input type="password" name="password" placeholder="password" id="login-password">
+			</span>
+		</div>
+		<div style="
+				width:fit-content;
+				color: var(--button-color2);
+				margin:auto;
+				margin-top:1rem;
+				background-color: var(--cream);
+				padding:0.5rem 1rem;
+				cursor:pointer;
+				border-radius: 0.7rem;
+				box-shadow: inset 0 -0.3rem 0.3rem #ccc8bb;
+				" tabindex=0 onclick="login()">Log In</div>
+		<input type="submit" name="" style="display:none">
+	</form>
+</div>
+
+<script type="text/javascript">
+	const username = document.getElementById("login-username");
+	const password = document.getElementById("login-password");
+	function login(){
+		console.log(`logging in\nusername:${username.value} password:${password.value}`);
+	}
+</script>

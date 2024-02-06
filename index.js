@@ -19,6 +19,9 @@ app.use("/public", express.static("public"));
 app.get("/", (req, res) => {
   res.send(containerize("/views/main.html"));
 });
+app.get("/about", (req, res) => {
+  res.send(containerize("/views/about.html"));
+});
 app.get("/login", (req, res) => {
   res.send(containerize("/views/login.html"));
 });
