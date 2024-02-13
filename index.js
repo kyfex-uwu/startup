@@ -14,7 +14,10 @@ czSetDir(__dirname);
 
 //--
 
-app.use("/public", express.static("public"));
+app.use("/public", (req, res) => {
+  // https://kyfexuwu-byucs260-public.s3.amazonaws.com[path], path:"/something/something.css"
+  res.redirect("https://kyfexuwu-byucs260-public.s3.amazonaws.com"+req.path);
+});
 
 app.get("/", (req, res) => {
   res.send(containerize("/views/main.html"));
