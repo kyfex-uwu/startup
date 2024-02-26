@@ -1,3 +1,444 @@
 <!--TITLE-->play
+<!--HEAD-->
+<link rel="stylesheet" href="/public/board.css" type="text/css">
 <!--BODY-->
-Websocket data + database data here, websocket for playing online and database for storing experiences
+<div id="board" style="
+		width:min(calc(70% + 5rem), 90%);
+		height:80vh;
+		background-color:#444;
+		margin:1rem auto;
+		position:relative;
+		overflow:hidden;
+		--offsetX: 10;
+		--offsetY: 10;">
+	<div style="
+			height:100%;
+			background-color:#3335;
+			z-index:5;
+			position:relative;
+			opacity:0;
+			transition:opacity 1s;
+			pointer-events:none;">
+		</div>
+	</div>
+<script>
+	const board = document.getElementById("board");
+	let boardOffset={x:0,y:0};
+	const boardOverlay = board.children[0];
+
+	let score=0;
+
+	const MIN_DRAG_DIST=10;
+	let mouseDown=false;
+	let dragging=false;
+	let startPos={x:0,y:0};
+	board.addEventListener("mousedown", e => {
+		mouseDown=true;
+		startPos = {
+			x:e.clientX-board.offsetLeft,
+			y:e.clientY-board.offsetTop
+		};
+	});
+	board.addEventListener("mouseup", e =>{
+		boardOffset={
+			x:parseFloat(getComputedStyle(board).getPropertyValue("--offsetX")),
+			y:parseFloat(getComputedStyle(board).getPropertyValue("--offsetY"))
+		};
+		if(!dragging){
+			let inst = e.srcElement.infinisweeper_cell;
+			if(!inst) inst = e.srcElement.parentNode.infinisweeper_cell;
+			if(inst){
+				if(e.button==0){
+					if(!inst.revealed) inst.click(true);
+					else inst.tryChord();
+				}else if(e.button==2){
+					inst.tryFlag();
+				}
+			}
+		}
+		mouseDown=false;
+		dragging=false;
+	});
+	board.addEventListener("contextmenu", e=>e.preventDefault());
+	board.addEventListener("mouseout", e => {
+		try{
+			if(e.srcElement.classList.contains("cell")) return;
+			if(e.srcElement.classList.contains("chunk")) return;
+			if(e.srcElement.id=="board") return;
+		}catch(e){}
+
+		boardOffset={
+			x:parseFloat(getComputedStyle(board).getPropertyValue("--offsetX")),
+			y:parseFloat(getComputedStyle(board).getPropertyValue("--offsetY"))
+		};
+		mouseDown=false;
+		dragging=false;
+	});
+	function recalcBoards(xOffs=0,yOffs=0){
+		let styles = getComputedStyle(board);
+		let chunkSize=(parseFloat(styles.getPropertyValue("--scale"))*parseFloat(styles["font-size"])*16)||512;
+		let chunksToLoad=[];
+
+		for(let y=-Math.floor(yOffs/chunkSize)-1;y<-Math.floor((yOffs-parseFloat(styles.height))/chunkSize);y++)
+			for(let x=-Math.floor(xOffs/chunkSize)-1;x<-Math.floor((xOffs-parseFloat(styles.width))/chunkSize);x++)
+				chunksToLoad.push({x,y});
+		for(let chunkData of Object.values(chunks)){
+			if(!chunksToLoad.some(pos=>chunkData.x==pos.x&&chunkData.y==pos.y)){
+				chunkData.unloadElement();
+			}
+		}
+		for(let chunkPos of chunksToLoad){
+			let chunk = getChunk(chunkPos.x,chunkPos.y,false);
+			if(!chunk.element) chunk.loadInElement();
+		}
+	}
+	board.addEventListener("mousemove", e => {
+		if(!mouseDown) return;
+		if(!dragging&&Math.sqrt((startPos.x-(e.clientX-board.offsetLeft))**2+
+			(startPos.y-(e.clientY-board.offsetTop))**2)<MIN_DRAG_DIST) return;
+		if(!dragging){
+			startPos = {
+				x:e.clientX-board.offsetLeft,
+				y:e.clientY-board.offsetTop
+			};
+		}
+		dragging=true;
+
+		let xOffs=boardOffset.x+e.clientX-board.offsetLeft-startPos.x;
+		let yOffs=boardOffset.y+e.clientY-board.offsetTop-startPos.y;
+		board.style.setProperty("--offsetX", xOffs);
+		board.style.setProperty("--offsetY", yOffs);
+
+		recalcBoards(xOffs,yOffs);
+	});
+
+	function getMine(){
+		let toReturn = document.createElement("img");
+		toReturn.src="/public/mine.svg";
+		toReturn.classList.add("icon");
+		return toReturn;
+	}
+	function getFlag(){
+		let toReturn = document.createElement("img");
+		toReturn.src="/public/flag.svg";
+		toReturn.classList.add("icon");
+		return toReturn;
+	}
+
+	const earlyRunnables=[];
+	const earlyRunnableIDs=[];
+	let finishingEarly=false;
+	function earlyRunnable(func,time){
+		if(!finishingEarly){
+			earlyRunnableIDs.push(setTimeout(()=>{
+				if(!finishingEarly) func();
+			},time));
+		}else func();
+	}
+	function finishEarly(){
+		if(finishingEarly) return;
+
+		finishingEarly=true;
+		for(id of earlyRunnableIDs) clearTimeout(id);
+		for(let i=0;i<earlyRunnables.length;i++) earlyRunnables[i]();
+		finishingEarly=false;
+		earlyRunnables.length=0;
+	}
+	class Cell{
+		constructor(isMine, chunk, x, y){
+			this.isMine=isMine;
+			this.chunk=chunk;
+			this.x=x;
+			this.y=y;
+			this.revealed=false;
+			this.flagged=false;
+			this.canTurnOver=true;
+		}
+		set revealed(bool){
+			this._revealed=bool;
+			if(this.element) this._updateVisual();
+		}
+		get revealed(){ return this._revealed; }
+		set count(num){
+			this._count=num;
+			if(this.element) this._updateVisual();
+		}
+		get count(){ return this._count; }
+		set flagged(bool){
+			this._flagged=bool;
+			if(this.element) this._updateVisual();
+		}
+		get flagged(){ return this._flagged; }
+		_updateVisual(){
+			this.element.innerHTML="";
+			this.element.classList.remove("revealed");
+
+			if(this.revealed||this.element.classList.contains("exploded")){
+				this.element.classList.add("revealed");
+				if(this.isMine){
+					this.element.appendChild(getMine());
+				}else{
+					this.element.append(this.count==0?"":this.count);
+				}
+			}else if(this.flagged){
+				this.element.appendChild(getFlag());
+			}
+		}
+
+		getElement(){
+			if(this.element) return this.element;
+
+			this.element = document.createElement("div");
+			this.element.classList.add("cell");
+			this.element.style.setProperty("--x", this.x);
+			this.element.style.setProperty("--y", this.y);
+			this.element.style.setProperty("--colorIndex", (this.x%2+this.y%2)%2);
+			this._updateVisual();
+
+			this.element.infinisweeper_cell=this;
+
+			return this.element;
+		}
+		unloadElement(){
+			if(!this.element) return;
+			this.element.remove();
+			this.element=undefined;
+		}
+
+		click(isDirect){
+			if(this.revealed||this.flagged) return;
+			if(isFirstClick){
+				for(let y=-1;y<=1;y++)
+					for(let x=-1;x<=1;x++)
+						this.offset(x,y).isMine=false;
+				isFirstClick=false;
+			}
+
+			this.revealed=true;
+			if(isDirect) finishEarly();
+			if(this.isMine){
+				boardOverlay.innerHTML = `<span style="
+						display: inline-block;
+						position: relative;
+						top: calc(50%);
+						transform: translateY(-50%);
+						background-color: #333;
+						padding: 1rem 2rem;
+						border-radius: 1rem;
+						outline: 0.3rem solid #555;">
+					You hit a mine!<br>
+					Final score: ${Math.round(score*100)/100}<br>
+					<span id="play-again">Play Again</span></span>`;
+				document.getElementById("play-again").addEventListener("click", ()=>{
+					finishEarly();
+
+					if(this.element) this.element.classList.add("exploded");
+					this.revealed=false;
+
+					earlyRunnable(()=>{
+						this._revealed=false;
+						this._flagged=false;
+						this.isMine=false;
+						if(this.element){
+							this.element.classList.remove("exploded");
+							this._updateVisual();
+						}
+						restart();
+					},280)
+				});
+				this.canTurnOver=false;
+				this.turnOver();
+
+				boardOverlay.style.opacity=1;
+				boardOverlay.style["pointer-events"]="auto";
+				return;
+			}
+			if(isDirect) score+=0.1;
+
+			this.count=0;
+			for(let y=-1;y<=1;y++){
+				for(let x=-1;x<=1;x++){
+					if(this.offset(x,y).isMine) this.count++;
+				}
+			}
+
+			if(this.count==0){
+				earlyRunnable(()=>{
+					for(let y=-1;y<=1;y++){
+						for(let x=-1;x<=1;x++){
+							this.offset(x,y).click(false);
+						}
+					}
+				},30);
+			}
+		}
+		tryFlag(){
+			if(this.revealed) return;
+			this.flagged=!this.flagged;
+			score+=this.isMine==this.flagged?1:-1;
+		}
+		tryChord(){
+			let flaggedCount=0;
+			for(let y=-1;y<=1;y++){
+				for(let x=-1;x<=1;x++){
+					if(this.offset(x,y).flagged) flaggedCount++;
+				}
+			}
+
+			if(flaggedCount==this.count){
+				for(let y=-1;y<=1;y++){
+					for(let x=-1;x<=1;x++){
+						this.offset(x,y).click(false);
+					}
+				}
+			}
+		}
+
+		left(){
+			if(this.x==0) return getChunk(this.chunk.x-1,this.chunk.y, false).cells[this.y][15];
+			return this.chunk.cells[this.y][this.x-1];
+		}
+		right(){
+			if(this.x==15) return getChunk(this.chunk.x+1,this.chunk.y, false).cells[this.y][0];
+			return this.chunk.cells[this.y][this.x+1];
+		}
+		up(){
+			if(this.y==0) return getChunk(this.chunk.x,this.chunk.y-1, false).cells[15][this.x];
+			return this.chunk.cells[this.y-1][this.x];
+		}
+		down(){
+			if(this.y==15) return getChunk(this.chunk.x,this.chunk.y+1, false).cells[0][this.x];
+			return this.chunk.cells[this.y+1][this.x];
+		}
+		offset(x,y){
+			let currCell=this;
+			while(x>0){
+				currCell=currCell.right();
+				x--;
+			}
+			while(x<0){
+				currCell=currCell.left();
+				x++;
+			}
+			while(y>0){
+				currCell=currCell.down();
+				y--;
+			}
+			while(y<0){
+				currCell=currCell.up();
+				y++;
+			}
+			return currCell;
+		}
+
+		turnOver(){
+			if(!this.revealed) return;
+			if(this.element&&this.canTurnOver) this.element.classList.add("exploded");
+			if(this.canTurnOver) this.revealed=false;
+
+			earlyRunnable(()=>{
+				for(let y=-1;y<=1;y++){
+					for(let x=-1;x<=1;x++){
+						let cell=this.offset(x,y);
+						if(!cell.canTurnOver) continue;
+						this.offset(x,y).turnOver();
+					}
+				}
+			},80);
+			earlyRunnable(()=>{
+				for(let y=-1;y<=1;y++){
+					for(let x=-1;x<=1;x++){
+						let toReset = this.offset(x,y);
+						if(!toReset.canTurnOver) continue;
+
+						toReset._revealed=false;
+						toReset._flagged=false;
+						toReset.isMine=false;
+						if(toReset.element){
+							toReset.element.classList.remove("exploded");
+							toReset._updateVisual();
+						}
+					}
+				}
+			},280);
+		}
+	}
+
+	class Chunk{
+		constructor(x, y){
+			this.x=x;
+			this.y=y;
+			this.loaded=false;
+
+			this.cells=[];
+			for(let y=0;y<16;y++){
+				this.cells[y]=[];
+				for(let x=0;x<16;x++){
+					this.cells[y][x]=undefined;
+				}
+			}
+		}
+		load(generator){
+			for(let y=0;y<16;y++)
+				for(let x=0;x<16;x++)
+					this.cells[y][x]=generator(x,y,this);
+			this.loaded=true;
+		}
+
+		loadInElement(){
+			if(!this.loaded||this.element) return;
+
+			this.element = document.createElement("div");
+			this.element.classList.add("chunk");
+			this.element.style.setProperty("--x", this.x);
+			this.element.style.setProperty("--y", this.y);
+
+			for(let y=0;y<16;y++){
+				for(let x=0;x<16;x++){
+					this.element.appendChild(this.cells[y][x].getElement());
+				}
+			}
+
+			board.appendChild(this.element);
+		}
+		unloadElement(){
+			for(let y=0;y<16;y++)
+				for(let x=0;x<16;x++)
+					this.cells[y][x].unloadElement();
+			if(!this.element) return;
+			this.element.remove();
+			this.element=undefined;
+		}
+	}
+
+	const chunks = {};
+	const DEFAULT_GENERATOR = (x,y,chunk)=>new Cell(Math.random()<0.2,chunk,x,y);
+	function getChunk(x,y,lazy){
+		let toReturn = chunks[x+","+y];
+		if(toReturn){
+			if(!toReturn.loaded&&!lazy) toReturn.load(DEFAULT_GENERATOR);
+			return toReturn;
+		}
+
+		toReturn = new Chunk(x,y);
+		if(!lazy) toReturn.load(DEFAULT_GENERATOR);
+		chunks[x+","+y]=toReturn;
+		return toReturn;
+	}
+
+	let isFirstClick=true;
+	function restart(){
+		for(let data of Object.entries(chunks)){
+			data[1].unloadElement();
+			delete chunks[data[0]];
+		}
+		boardOverlay.style.opacity=0;
+		boardOverlay.style["pointer-events"]="none";
+		score=0;
+		isFirstClick=true;
+
+		recalcBoards(parseFloat(getComputedStyle(board).getPropertyValue("--offsetX")),
+			parseFloat(getComputedStyle(board).getPropertyValue("--offsetY")));
+	}
+	restart();
+</script>

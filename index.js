@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import { WebSocketServer } from "ws";
+import mysql from "mysql";
 const app = express();
 
 import cookieParser from "cookie-parser";
@@ -14,8 +15,8 @@ czSetDir(__dirname);
 
 //--
 
+/*app.use("/public", express.static("public"));*/
 app.use("/public", (req, res) => {
-  // https://kyfexuwu-byucs260-public.s3.amazonaws.com[path], path:"/something/something.css"
   res.redirect("https://kyfexuwu-byucs260-public.s3.amazonaws.com"+req.path);
 });
 
@@ -34,6 +35,36 @@ app.get("/register", (req, res) => {
 app.get("/play", (req, res) => {
   res.send(containerize("/views/play.html"));
 });
+
+//--
+
+function withConnection(toRun){
+  return;
+
+  const conn = mysql.createConnection({
+    host: "kyfexuwu-byucs260-startup.cx8eqs68ykny.us-east-1.rds.amazonaws.com",
+    user: "admin",
+    password: "password"
+  });
+
+  conn.connect((err)=>{
+    if(err) throw err;
+  });
+
+  toRun(conn);
+
+  conn.end();
+}
+
+withConnection(conn=>{
+  console.log("owo")
+  conn.query('SELECT 1', (error, results, fields) => {
+    if (error) throw error;
+    // connected!
+  });
+});
+
+//--
 
 app.listen(4000);
 

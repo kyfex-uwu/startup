@@ -18,7 +18,7 @@ export function containerize(filePath){
 	let head = [...fileContents.matchAll(regexes.head)][0];
 	let body = [...fileContents.matchAll(regexes.body)][0];
 	return container
-		.replace("<!--TITLE-->","meiket"+(title==undefined?"":" | "+title[1]))
+		.replace("<!--TITLE-->","infinisweeper"+(title==undefined?"":" | "+title[1]))
 		.replace("<!--HEAD-->",(head==undefined?"":head[1]))
 		.replace("<!--BODY-->",(body==undefined?"":body[1]));
 }

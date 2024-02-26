@@ -28,14 +28,20 @@
 <!--BODY-->
 <div style="height:3rem;"></div>
 <div style="
-		background:#4287f5;
+		background:var(--button-color2);;
 		width:min(calc(100% - 6rem),calc(20rem + 30%));
 		margin:auto;
 		padding:3rem;
 		border-radius: 1rem;
 		">
-	<img src="/public/meiket.png" style="height:3rem; display:block; margin:auto; margin-bottom: 1rem;">
-	<form onsubmit="return login()==69;">
+	<div style="
+			font-size: 3rem;
+			text-align: center;
+			margin-bottom: 1rem;
+			width: 100%;">
+		infinisweeper
+	</div>
+	<form onsubmit="return login()&&false;">
 		<div style="text-align:center;">
 			<span class="field">
 				<label for="username" style="margin-right:1rem;">Username:</label>

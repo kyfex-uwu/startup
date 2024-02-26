@@ -4,7 +4,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="stylesheet" href="/public/main.css">
 		<link rel="stylesheet" href="/public/mobile.css" media="only screen and (max-width: 500px)">
-		<link rel="icon" type="image/x-icon" href="/public/meiket-icon.ico">
+		<link rel="icon" type="image/x-icon" href="/public/mine.svg">
 		<script type="module">
 			import { reactive, html, watch } from 'https://esm.sh/@arrow-js/core';
 			window.arrow={ reactive, html, watch };
@@ -13,28 +13,32 @@
 		<!--HEAD-->
 	</head>
 	<body>
-		<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="navbar-hamburger">
-			<path d="M4 18L20 18" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
-			<path d="M4 12L20 12" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
-			<path d="M4 6L20 6" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
-		</svg>
-		<span id="navbar">
-			<img src="/public/meiket-icon.png" style="height:3rem; vertical-align:middle; padding:0 1rem;" class="hide-mobile">
-			<span class="navbutton" onclick="window.location.assign('/')">Home</span>
-			<span class="navbutton" onclick="window.location.assign('/about')">About</span>
-		</span>
-		<span class="navbutton" style="float:right;" onclick="window.location.assign('/login')">Login</span>
-		<div style=""></div>
-		<!--BODY-->
+		<main>
+			<div>
+				<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="navbar-hamburger">
+					<path d="M4 18L20 18" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
+					<path d="M4 12L20 12" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
+					<path d="M4 6L20 6" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
+				</svg>
+				<span id="navbar">
+					<img src="/public/mine.svg" style="height:3rem; vertical-align:middle; padding:0 1rem;" class="hide-mobile">
+					<span class="navbutton" onclick="window.location.assign('/')">Home</span>
+					<span class="navbutton" onclick="window.location.assign('/about')">About</span>
+					<span class="navbutton" onclick="window.location.assign('/play')">Play</span>
+				</span>
+				<span class="navbutton" style="float:right;" onclick="window.location.assign('/login')">Login</span>
+			</div>
+			<!--BODY-->
+		</main>
+		<div style="flex-grow:1;"></div>
 		<div style="
-				position:fixed;
-				bottom:0;
-				left:0;
 				text-align: center;
-				width:100%;
 				background-color: #555555;
 				padding: 1rem;
-
+				position: relative;
+				width: 100vw;
+				transform: translateX(-50%);
+				left: 50%;
 				"><a href="https://github.com/kyfex-uwu/startup" style="color:var(--cream)">GitHub</a></div>
 		<script>
 			const navbar = document.getElementById("navbar");
