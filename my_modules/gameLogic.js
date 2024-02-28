@@ -33,7 +33,7 @@ class Cell{
 		if(this.isMine){
 			for(let y=-5;y<=5;y++){
 				for(let x=-5;x<=5;x++){
-					if(Math.sqrt(x**2+y**2)<=5.5){
+					if(Math.sqrt(x**2+y**2)<=5.3){
 						let cellToExplode=this.offset(x,y);
 						cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=
 							DEFAULT_GENERATOR(cellToExplode.x,cellToExplode.y,cellToExplode.chunk);
