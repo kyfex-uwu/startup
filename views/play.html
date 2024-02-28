@@ -308,8 +308,10 @@
 			if(flaggedCount==this.count){
 				for(let y=-1;y<=1;y++){
 					for(let x=-1;x<=1;x++){
-						if(!(await this.offset(x,y)).revealed&&!(await this.offset(x,y)).flagged)
-							send("click", {x:this.x+x, y:this.y+y, cx:this.chunk.x, cy:this.chunk.y});
+						if(!(await this.offset(x,y)).revealed&&!(await this.offset(x,y)).flagged){
+							send("click", {x:(this.x+x+16)%16, y:(this.y+y+16)%16, 
+								cx:this.chunk.x+Math.floor((this.x+x)/16), cy:this.chunk.y+Math.floor((this.y+y)/16)});
+						}
 					}
 				}
 			}
