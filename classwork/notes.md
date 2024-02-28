@@ -13,6 +13,7 @@
 
 - ssh -i [key pair file] ubuntu@[yourdomainnamehere] : connect to server
 - touch [file name] : make a new file
+- pm2 restart startup : restart your thing
 
 ## uhh html/stage 1 of startup
 literally go to kyfexuwu.com, didnt really learn a lot hehe

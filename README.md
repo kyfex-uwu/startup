@@ -1,16 +1,15 @@
-# Meiket
+# infinisweeper
 
-Meiket is a place to create, share, and play in VR spaces. Built on the web so any VR device can access it, Meiket will revolutionize how people can share VR experiences.
-It's a platform made with developers in mind, with built in tools to create both in and out of VR. And because it can be accessed through a web browser, you can share these experiences - both creating and playing - with anyone you want.
+An online, globally multiplayer minesweeper. Play with your friends and compete from the longest run!
 
 - HTML - login/profile/settings pages
 - CSS - making a cohesive and clean style for the site
-- JS - creating a code editor outside of VR, and rendering/interacting inside VR
-- Authentication - letting users save their experiences under their account and have an identity inside VR
-- Database - letting users save their user data (name, bio) and experiences
-- Websockets - letting users play in the same space together
+- JS - all the logic for the minesweeper
+- Authentication - letting users log in so they can store their all time progress
+- Database - saving that all time progress
+- Websockets - letting users communicate to the server and play together
 
-![Meiket sketch](/docs/concept.jpg)
+![infinisweeper sketch](classwork/docs/concept.jpg)
 
 ## CSS Deliverable
 

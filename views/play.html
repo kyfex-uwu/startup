@@ -21,12 +21,18 @@
 			pointer-events:none;">
 		</div>
 	</div>
-<script>
+<script type="module">
+	const conn = new WebSocket("/websocket");
+	await new Promise(r=>{
+		if(conn.readyState==1) r();
+		else conn.addEventListener("open", r);
+	});
+
+	//--
+
 	const board = document.getElementById("board");
 	let boardOffset={x:0,y:0};
 	const boardOverlay = board.children[0];
-
-	let score=0;
 
 	const MIN_DRAG_DIST=10;
 	let mouseDown=false;
@@ -82,14 +88,13 @@
 		for(let y=-Math.floor(yOffs/chunkSize)-1;y<-Math.floor((yOffs-parseFloat(styles.height))/chunkSize);y++)
 			for(let x=-Math.floor(xOffs/chunkSize)-1;x<-Math.floor((xOffs-parseFloat(styles.width))/chunkSize);x++)
 				chunksToLoad.push({x,y});
-		for(let chunkData of Object.values(chunks)){
+		for(const chunkData of Object.values(chunks)){
 			if(!chunksToLoad.some(pos=>chunkData.x==pos.x&&chunkData.y==pos.y)){
 				chunkData.unloadElement();
 			}
 		}
-		for(let chunkPos of chunksToLoad){
-			let chunk = getChunk(chunkPos.x,chunkPos.y,false);
-			if(!chunk.element) chunk.loadInElement();
+		for(const chunkPos of chunksToLoad){
+			getChunk(chunkPos.x,chunkPos.y).loadInElement();
 		}
 	}
 	board.addEventListener("mousemove", e => {
@@ -139,7 +144,7 @@
 		if(finishingEarly) return;
 
 		finishingEarly=true;
-		for(id of earlyRunnableIDs) clearTimeout(id);
+		for(const id of earlyRunnableIDs) clearTimeout(id);
 		for(let i=0;i<earlyRunnables.length;i++) earlyRunnables[i]();
 		finishingEarly=false;
 		earlyRunnables.length=0;
@@ -159,17 +164,12 @@
 			if(this.element) this._updateVisual();
 		}
 		get revealed(){ return this._revealed; }
-		set count(num){
-			this._count=num;
-			if(this.element) this._updateVisual();
-		}
-		get count(){ return this._count; }
 		set flagged(bool){
 			this._flagged=bool;
 			if(this.element) this._updateVisual();
 		}
 		get flagged(){ return this._flagged; }
-		_updateVisual(){
+		async _updateVisual(){
 			this.element.innerHTML="";
 			this.element.classList.remove("revealed");
 
@@ -178,6 +178,7 @@
 				if(this.isMine){
 					this.element.appendChild(getMine());
 				}else{
+					await this._updateCount();
 					this.element.append(this.count==0?"":this.count);
 				}
 			}else if(this.flagged){
@@ -185,6 +186,16 @@
 			}
 		}
 
+		async _updateCount(){
+			if(this.count!==undefined) return;
+			let count=0;
+			for(let y=-1;y<=1;y++){
+				for(let x=-1;x<=1;x++){
+					if((await this.offset(x,y)).isMine) count++;
+				}
+			}
+			this.count=count;
+		}
 		getElement(){
 			if(this.element) return this.element;
 
@@ -205,17 +216,14 @@
 			this.element=undefined;
 		}
 
-		click(isDirect){
+		async serverClick(isDirect){
 			if(this.revealed||this.flagged) return;
-			if(isFirstClick){
-				for(let y=-1;y<=1;y++)
-					for(let x=-1;x<=1;x++)
-						this.offset(x,y).isMine=false;
-				isFirstClick=false;
-			}
 
 			this.revealed=true;
-			if(isDirect) finishEarly();
+			if(isDirect){
+				finishEarly();
+			}
+			/*
 			if(this.isMine){
 				boardOverlay.innerHTML = `<span style="
 						display: inline-block;
@@ -238,7 +246,6 @@
 					earlyRunnable(()=>{
 						this._revealed=false;
 						this._flagged=false;
-						this.isMine=false;
 						if(this.element){
 							this.element.classList.remove("exploded");
 							this._updateVisual();
@@ -253,79 +260,93 @@
 				boardOverlay.style["pointer-events"]="auto";
 				return;
 			}
-			if(isDirect) score+=0.1;
+			*/
 
-			this.count=0;
-			for(let y=-1;y<=1;y++){
-				for(let x=-1;x<=1;x++){
-					if(this.offset(x,y).isMine) this.count++;
-				}
-			}
-
+			await this._updateCount();
 			if(this.count==0){
-				earlyRunnable(()=>{
-					for(let y=-1;y<=1;y++){
-						for(let x=-1;x<=1;x++){
-							this.offset(x,y).click(false);
-						}
+				let toClick = [];
+				let resolve;
+				let addCell=new Promise(r=>resolve=r);
+				earlyRunnable(async ()=>{
+					let counter=9;
+					for(const cell of toClick){
+						cell.serverClick(false);
+						counter--;
+					}
+					while(counter>0){
+						(await addCell).serverClick(false);
+						counter--;
 					}
 				},30);
+				for(let y=-1;y<=1;y++){
+					for(let x=-1;x<=1;x++){
+						let newCell=await this.offset(x,y);
+						toClick.push(newCell);
+						resolve(newCell);
+						addCell=new Promise(r=>resolve=r);
+					}
+				}
 			}
+		}
+		click(){
+			if(this.revealed) return;
+			send("click", {x:this.x, y:this.y, cx:this.chunk.x, cy:this.chunk.y});
 		}
 		tryFlag(){
 			if(this.revealed) return;
-			this.flagged=!this.flagged;
-			score+=this.isMine==this.flagged?1:-1;
+			send("flag", {x:this.x, y:this.y, cx:this.chunk.x, cy:this.chunk.y});
 		}
-		tryChord(){
+		async tryChord(){
 			let flaggedCount=0;
 			for(let y=-1;y<=1;y++){
 				for(let x=-1;x<=1;x++){
-					if(this.offset(x,y).flagged) flaggedCount++;
+					if((await this.offset(x,y)).flagged) flaggedCount++;
 				}
 			}
 
+			this._updateCount();
 			if(flaggedCount==this.count){
 				for(let y=-1;y<=1;y++){
 					for(let x=-1;x<=1;x++){
-						this.offset(x,y).click(false);
+						send("click", {x:this.x+x,y:this.y+y});
 					}
 				}
 			}
 		}
 
-		left(){
-			if(this.x==0) return getChunk(this.chunk.x-1,this.chunk.y, false).cells[this.y][15];
+		//these need to await
+		async left(){
+			if(this.x==0) return (await waitForChunk(getChunk(this.chunk.x-1,this.chunk.y))).cells[this.y][15];
 			return this.chunk.cells[this.y][this.x-1];
 		}
-		right(){
-			if(this.x==15) return getChunk(this.chunk.x+1,this.chunk.y, false).cells[this.y][0];
+		async right(){
+			if(this.x==15) return (await waitForChunk(getChunk(this.chunk.x+1,this.chunk.y))).cells[this.y][0];
 			return this.chunk.cells[this.y][this.x+1];
 		}
-		up(){
-			if(this.y==0) return getChunk(this.chunk.x,this.chunk.y-1, false).cells[15][this.x];
+		async up(){
+			if(this.y==0) return (await waitForChunk(getChunk(this.chunk.x,this.chunk.y-1))).cells[15][this.x];
 			return this.chunk.cells[this.y-1][this.x];
 		}
-		down(){
-			if(this.y==15) return getChunk(this.chunk.x,this.chunk.y+1, false).cells[0][this.x];
+		async down(){
+			if(this.y==15) return (await waitForChunk(getChunk(this.chunk.x,this.chunk.y+1))).cells[0][this.x];
 			return this.chunk.cells[this.y+1][this.x];
 		}
-		offset(x,y){
+		async offset(x,y){
 			let currCell=this;
 			while(x>0){
-				currCell=currCell.right();
+				currCell=await currCell.right();
 				x--;
 			}
 			while(x<0){
-				currCell=currCell.left();
+				currCell=await currCell.left();
 				x++;
 			}
 			while(y>0){
-				currCell=currCell.down();
+				currCell=await currCell.down();
 				y--;
 			}
 			while(y<0){
-				currCell=currCell.up();
+				currCell=await currCell.up();
 				y++;
 			}
 			return currCell;
@@ -337,28 +358,11 @@
 			if(this.canTurnOver) this.revealed=false;
 
 			earlyRunnable(()=>{
-				for(let y=-1;y<=1;y++){
-					for(let x=-1;x<=1;x++){
-						let cell=this.offset(x,y);
-						if(!cell.canTurnOver) continue;
-						this.offset(x,y).turnOver();
-					}
-				}
-			},80);
-			earlyRunnable(()=>{
-				for(let y=-1;y<=1;y++){
-					for(let x=-1;x<=1;x++){
-						let toReset = this.offset(x,y);
-						if(!toReset.canTurnOver) continue;
-
-						toReset._revealed=false;
-						toReset._flagged=false;
-						toReset.isMine=false;
-						if(toReset.element){
-							toReset.element.classList.remove("exploded");
-							toReset._updateVisual();
-						}
-					}
+				this._revealed=false;
+				this._flagged=false;
+				if(this.element){
+					this.element.classList.remove("exploded");
+					this._updateVisual();
 				}
 			},280);
 		}
@@ -368,7 +372,6 @@
 		constructor(x, y){
 			this.x=x;
 			this.y=y;
-			this.loaded=false;
 
 			this.cells=[];
 			for(let y=0;y<16;y++){
@@ -377,68 +380,130 @@
 					this.cells[y][x]=undefined;
 				}
 			}
-		}
-		load(generator){
-			for(let y=0;y<16;y++)
-				for(let x=0;x<16;x++)
-					this.cells[y][x]=generator(x,y,this);
-			this.loaded=true;
-		}
 
-		loadInElement(){
-			if(!this.loaded||this.element) return;
-
-			this.element = document.createElement("div");
-			this.element.classList.add("chunk");
-			this.element.style.setProperty("--x", this.x);
-			this.element.style.setProperty("--y", this.y);
-
-			for(let y=0;y<16;y++){
-				for(let x=0;x<16;x++){
-					this.element.appendChild(this.cells[y][x].getElement());
+			this.loaded=false;
+			let resolve;
+			this.loadedPromise = new Promise(r=>resolve=r);
+			(async()=>{
+				this._updateVisual();
+				const cellData = await sendWithResponse("chunk", {x:this.x, y:this.y});
+				for(let y=0;y<16;y++){
+					this.cells[y]=[];
+					for(let x=0;x<16;x++){
+						const thisCell = cellData.map[y*16+x];
+						let toPut = new Cell(thisCell&0b001, this, x, y);
+						if(thisCell&0b010) toPut.revealed=true;
+						if(thisCell&0b100) toPut.flagged=true;
+						this.cells[y][x]=toPut;
+					}
 				}
+				this.loaded=true;
+				resolve();
+				this._updateVisual();
+			})();
+		}
+
+		_updateVisual(){
+			if(!this.element){
+				this.element = document.createElement("div");
+				this.element.classList.add("chunk");
+				this.element.style.setProperty("--x", this.x);
+				this.element.style.setProperty("--y", this.y);
 			}
+
+			this.element.replaceChildren();
+			if(this.loaded){
+				this.element.classList.remove("loading");
+				for(let y=0;y<16;y++){
+					for(let x=0;x<16;x++){
+						this.element.appendChild(this.cells[y][x].getElement());
+					}
+				}
+			}else{
+				this.element.classList.add("loading");
+
+			}
+		}
+		loadInElement(){
+			if(this.element&&this.element.parentElement) return;
+
+			this._updateVisual();
 
 			board.appendChild(this.element);
 		}
 		unloadElement(){
 			for(let y=0;y<16;y++)
 				for(let x=0;x<16;x++)
-					this.cells[y][x].unloadElement();
+					if(this.cells[y][x]) this.cells[y][x].unloadElement();
 			if(!this.element) return;
 			this.element.remove();
 			this.element=undefined;
 		}
 	}
 
-	const chunks = {};
-	const DEFAULT_GENERATOR = (x,y,chunk)=>new Cell(Math.random()<0.2,chunk,x,y);
-	function getChunk(x,y,lazy){
-		let toReturn = chunks[x+","+y];
-		if(toReturn){
-			if(!toReturn.loaded&&!lazy) toReturn.load(DEFAULT_GENERATOR);
-			return toReturn;
+	//--
+
+	const _waitingMessages={};
+	let currID=0;
+	function send(channel, data){
+		conn.send(JSON.stringify({channel, data}));
+	}
+	async function sendWithResponse(channel, data){
+		let thisID=currID+1;
+		currID=(currID+1)%1000;
+		conn.send(JSON.stringify({channel, data, id:thisID}));
+
+		let resolve;
+		const toAwait = new Promise(r=>resolve=r);
+		_waitingMessages[thisID]=resolve;
+
+		const toReturn = await toAwait;
+		delete _waitingMessages[thisID];
+		return toReturn;
+	}
+	conn.addEventListener("message", async e=>{
+		const message = JSON.parse(e.data);
+		if(message.id!==undefined){
+			if(_waitingMessages[message.id]) _waitingMessages[message.id](message.data);
+		}else{
+			switch(message.channel){
+				case "click":{
+					let chunk = await waitForChunk(getChunk(message.data.cx, message.data.cy));
+					chunk.cells[message.data.y][message.data.x].serverClick();
+					}break;
+				case "flag":{
+					let chunk = await waitForChunk(getChunk(message.data.cx, message.data.cy));
+					chunk.cells[message.data.y][message.data.x].flagged=message.data.flag;
+					}break;
+			}
 		}
+	});
+
+	const chunks = {};
+	function getChunk(x,y){
+		let toReturn = chunks[x+","+y];
+		if(toReturn) return toReturn;
 
 		toReturn = new Chunk(x,y);
-		if(!lazy) toReturn.load(DEFAULT_GENERATOR);
 		chunks[x+","+y]=toReturn;
 		return toReturn;
 	}
+	async function waitForChunk(chunk){
+		if(chunk.loaded) return chunk;
+		await chunk.loadedPromise;
+		return chunk;
+	}
 
-	let isFirstClick=true;
+	recalcBoards(parseFloat(getComputedStyle(board).getPropertyValue("--offsetX")),
+			parseFloat(getComputedStyle(board).getPropertyValue("--offsetY")));
+
+	/*
 	function restart(){
-		for(let data of Object.entries(chunks)){
-			data[1].unloadElement();
-			delete chunks[data[0]];
-		}
 		boardOverlay.style.opacity=0;
 		boardOverlay.style["pointer-events"]="none";
-		score=0;
-		isFirstClick=true;
 
 		recalcBoards(parseFloat(getComputedStyle(board).getPropertyValue("--offsetX")),
 			parseFloat(getComputedStyle(board).getPropertyValue("--offsetY")));
 	}
-	restart();
+	*/
 </script>

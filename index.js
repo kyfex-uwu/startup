@@ -1,8 +1,8 @@
 import express from "express";
+import * as http from 'http';
 import fs from "fs";
-import { WebSocketServer } from "ws";
-import mysql from "mysql";
 const app = express();
+const server = http.createServer(app);
 
 import cookieParser from "cookie-parser";
 app.use(cookieParser());
@@ -15,10 +15,10 @@ czSetDir(__dirname);
 
 //--
 
-/*app.use("/public", express.static("public"));*/
+app.use("/public", express.static("public"));/*
 app.use("/public", (req, res) => {
   res.redirect("https://kyfexuwu-byucs260-public.s3.amazonaws.com"+req.path);
-});
+});*/
 
 app.get("/", (req, res) => {
   res.send(containerize("/views/main.html"));
@@ -38,35 +38,22 @@ app.get("/play", (req, res) => {
 
 //--
 
-function withConnection(toRun){
-  return;
-
-  const conn = mysql.createConnection({
-    host: "kyfexuwu-byucs260-startup.cx8eqs68ykny.us-east-1.rds.amazonaws.com",
-    user: "admin",
-    password: "password"
-  });
-
-  conn.connect((err)=>{
-    if(err) throw err;
-  });
-
-  toRun(conn);
-
-  conn.end();
-}
-
-withConnection(conn=>{
-  console.log("owo")
-  conn.query('SELECT 1', (error, results, fields) => {
-    if (error) throw error;
-    // connected!
-  });
+import { getWSS } from "./my_modules/gameLogic.js";
+import { parse } from 'url';
+const wss = getWSS();
+server.on('upgrade', (request, socket, head) => {
+  if (parse(request.url).pathname === '/websocket') {
+    wss.handleUpgrade(request, socket, head, ws => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
 });
 
 //--
 
-app.listen(4000);
+server.listen(4000);
 
 //--
 
