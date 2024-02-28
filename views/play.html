@@ -500,6 +500,23 @@
 					}
 
 					chunk.loadInElement();
+
+					for(let y=-1;y<=1;y++){
+						for(let x=-1;x<=1;x++){
+							if((y!=0&&x!=0)||y==x) continue;
+							const maybeChunk=chunks[(message.data.x+x)+","+(message.data.y+y)];
+							if(maybeChunk){
+								for(const row of maybeChunk.cells){
+									for(const cell of row){
+										if((cell.x==0||cell.x==15||cell.y==0||cell.y==15)&&cell.count!=undefined){
+											cell.count=undefined;
+											cell._updateVisual();
+										}
+									}
+								}
+							}
+						}
+					}
 				}break;
 			}
 		}
