@@ -31,8 +31,16 @@ class Cell{
 		if(this.revealed||this.flagged) return;
 		this.revealed=true;
 		if(this.isMine){
-			this.revealed=false;
-			//explode
+			for(let y=-5;y<=5;y++){
+				for(let x=-5;x<=5;x++){
+					console.log("oops", Math.sqrt(x**2+y**2))
+					if(Math.sqrt(x**2+y**2)<=5.5){
+						let cellToExplode=this.offset(x,y);
+						cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=
+							DEFAULT_GENERATOR(cellToExplode.x,cellToExplode.y,cellToExplode.chunk);
+					}
+				}
+			}
 			return;
 		}
 		if(player) player.score+=0.1;
@@ -183,13 +191,25 @@ wss.on('connection', ws => {
 						reply(ws, "error", "Invalid coords", id);
 					else{
 						thisPlayer.chunkPos=[message.data.cx,message.data.cy];
-						getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x].click(thisPlayer);
-						
+						let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
+						cell.click(thisPlayer);
+
 						for(const player of getPlayersInRange(thisPlayer.chunkPos)){
-							reply(player.ws, "click", {
+							reply(player.ws, cell.isMine?"explode":"click", {
 								cx:message.data.cx, cy:message.data.cy,
 								x:message.data.x, y:message.data.y
-							}, player==thisPlayer?id:undefined);
+							});
+
+							if(cell.isMine){
+								for(let x=Math.floor(message.data.cx-5/16);x<=message.data.cx+6/16;x++){
+									for(let y=Math.floor(message.data.cy-5/16);y<=message.data.cy+6/16;y++){
+										reply(player.ws, "loadchunk", {
+											chunk:getChunk(x,y).toJsonObj(),
+											x,y
+										});
+									}
+								}
+							}
 						}
 					}
 					break;
@@ -207,7 +227,7 @@ wss.on('connection', ws => {
 								cx:message.data.cx, cy:message.data.cy,
 								x:message.data.x, y:message.data.y,
 								flag:cell.flagged
-							}, player==thisPlayer?id:undefined);
+							});
 						}
 					}
 					break;

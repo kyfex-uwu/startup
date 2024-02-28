@@ -471,11 +471,34 @@
 				case "click":{
 					let chunk = await waitForChunk(getChunk(message.data.cx, message.data.cy));
 					chunk.cells[message.data.y][message.data.x].serverClick();
-					}break;
+				}break;
 				case "flag":{
 					let chunk = await waitForChunk(getChunk(message.data.cx, message.data.cy));
 					chunk.cells[message.data.y][message.data.x].flagged=message.data.flag;
-					}break;
+				}break;
+				case "explode":{
+					let centerCell=(await waitForChunk(getChunk(message.data.cx, message.data.cy)))
+						.cells[message.data.cy][message.data.cx];
+
+					//some graphic
+				}break;
+				case "loadchunk":{
+					let chunk = await waitForChunk(getChunk(message.data.x, message.data.y));
+					chunk.unloadElement();
+
+					for(let y=0;y<16;y++){
+						chunk.cells[y]=[];
+						for(let x=0;x<16;x++){
+							const thisCell = message.data.chunk.map[y*16+x];
+							let toPut = new Cell(thisCell&0b001, chunk, x, y);
+							if(thisCell&0b010) toPut.revealed=true;
+							if(thisCell&0b100) toPut.flagged=true;
+							chunk.cells[y][x]=toPut;
+						}
+					}
+
+					chunk.loadInElement();
+				}break;
 			}
 		}
 	});
