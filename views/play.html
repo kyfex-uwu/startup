@@ -22,7 +22,7 @@
 		</div>
 	</div>
 <script type="module">
-	const conn = new WebSocket("/websocket");
+	const conn = new WebSocket("wss://"+window.location.host+"/websocket");
 	await new Promise(r=>{
 		if(conn.readyState==1) r();
 		else conn.addEventListener("open", r);

@@ -33,7 +33,6 @@ class Cell{
 		if(this.isMine){
 			for(let y=-5;y<=5;y++){
 				for(let x=-5;x<=5;x++){
-					console.log("oops", Math.sqrt(x**2+y**2))
 					if(Math.sqrt(x**2+y**2)<=5.5){
 						let cellToExplode=this.offset(x,y);
 						cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=
@@ -232,7 +231,7 @@ wss.on('connection', ws => {
 					}
 					break;
 			}
-		}catch(e){ console.log(e); }
+		}catch(e){}
 	});
 });
 
