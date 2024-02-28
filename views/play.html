@@ -308,7 +308,8 @@
 			if(flaggedCount==this.count){
 				for(let y=-1;y<=1;y++){
 					for(let x=-1;x<=1;x++){
-						send("click", {x:this.x+x,y:this.y+y});
+						if(!(await this.offset(x,y)).revealed&&!(await this.offset(x,y)).flagged)
+							send("click", {x:this.x+x, y:this.y+y, cx:this.chunk.x, cy:this.chunk.y});
 					}
 				}
 			}
