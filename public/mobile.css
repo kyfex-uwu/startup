@@ -4,6 +4,7 @@ html{
 
 #navbar{
   padding:1rem;
+  z-index:999;
 
   left:-100%;
   top:0;
