@@ -20,7 +20,17 @@
 			background-color: #0009;
 			border-radius: 1rem;
 			outline:0.2rem solid #fff;
-			color:#fff;" id="score-element"></span>
+			color:#fff;" id="score-element">Score: 0</span>
+	<span style="
+			position:absolute;
+			left:0;
+			z-index:4;
+			margin:0.6rem 0.5rem;
+			padding:0.3rem 0.8rem;
+			background-color: #0009;
+			border-radius: 1rem;
+			outline:0.2rem solid #fff;
+			color:#fff;" id="pos-element">0, 0</span>
 	</div>
 <script type="module">
 	const conn = new WebSocket(`ws${window.location.hostname=="localhost"?"":"s"}://${window.location.host}/websocket`);
@@ -32,8 +42,11 @@
 	//--
 
 	const board = document.getElementById("board");
-	let boardOffset={x:0,y:0};
-	const boardOverlay = board.children[0];
+	const positionElement = document.getElementById("pos-element");
+	let boardOffset={x:Math.floor(Math.random()*999-499),y:Math.floor(Math.random()*999-499)};
+	board.style.setProperty("--offsetX", boardOffset.x);
+	board.style.setProperty("--offsetY", boardOffset.y);
+	positionElement.textContent=Math.round(-boardOffset.x)+", "+Math.round(boardOffset.y);
 
 	const MIN_DRAG_DIST=10;
 	let mouseDown=false;
@@ -114,6 +127,7 @@
 		let yOffs=boardOffset.y+e.clientY-board.offsetTop-startPos.y;
 		board.style.setProperty("--offsetX", xOffs);
 		board.style.setProperty("--offsetY", yOffs);
+		positionElement.textContent=Math.round(-xOffs)+", "+Math.round(yOffs);
 
 		recalcBoards(xOffs,yOffs);
 	});
