@@ -3,17 +3,44 @@ import { v4 as uuidv4 } from 'uuid';
 
 class Player{
 	constructor(ws){
-		this.score=0;
 		this.ws=ws;
 		this.chunkPos=[0,0];
 		this.id=uuidv4();
+		this.reset();
 	}
-	get score(){
-		return this._score;
+
+	incFlag(wasGood){
+		if(wasGood) this.goodflags+=1n;
+		else this.badflags+=1n;
+		this.sendScore();
 	}
-	set score(val){
-		this._score=val;
-		//send to player
+	decFlag(wasGood){
+		if(wasGood) this.goodflags-=1n;
+		else this.badflags-=1n;
+		this.sendScore();
+	}
+	incRevealed(){
+		this.revealed+=1n;
+		let currRevealed = this.revealed;
+		setTimeout(()=>{
+			if(currRevealed==this.revealed) this.sendScore();
+		},500);
+	}
+	sendScore(){
+		reply(this.ws, "score", this.fakeScore().toString());
+	}
+	fakeScore(){
+		return (this.goodflags+this.badflags)*10n+this.revealed;
+	}
+	realScore(){
+		return (this.goodflags-this.badflags)*10n+this.revealed;
+	}
+
+	reset(){
+		this.goodflags=0n;
+		this.badflags=0n;
+		this.revealed=0n;
+		this.sendScore();
 	}
 }
 
@@ -30,19 +57,35 @@ class Cell{
 	click(player){
 		if(this.revealed||this.flagged) return;
 		this.revealed=true;
+		//if(player&&player.score==0n) this.isMine=false;//need more criteria than this
 		if(this.isMine){
+			let chunksAffected={};
 			for(let y=-5;y<=5;y++){
 				for(let x=-5;x<=5;x++){
 					if(Math.sqrt(x**2+y**2)<=5.3){
 						let cellToExplode=this.offset(x,y);
+						if(!chunksAffected[cellToExplode.chunk.x])
+							chunksAffected[cellToExplode.chunk.x]={ [cellToExplode.chunk.y]:true };
+						else chunksAffected[cellToExplode.chunk.x][cellToExplode.chunk.y]=true;
+
 						cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=
 							DEFAULT_GENERATOR(cellToExplode.x,cellToExplode.y,cellToExplode.chunk);
 					}
 				}
 			}
+			for(const xData of Object.entries(chunksAffected)){
+				for(const y of Object.keys(xData[1])){
+					let pos = [xData[0],y];
+					for(const player of getPlayersInRange(pos))
+						reply(player.ws, "loadchunk", {
+							chunk:getChunk(pos[0],pos[1]).toJsonObj(),
+							x:pos[0],y:pos[1]
+						});
+				}
+			}
 			return;
 		}
-		if(player) player.score+=0.1;
+		if(player) player.incRevealed();
 
 		let hasMines=false;
 		for(let y=-1;y<=1;y++){
@@ -62,7 +105,12 @@ class Cell{
 	tryFlag(player){
 		if(this.revealed) return;
 		this.flagged=!this.flagged;
-		player.score+=this.isMine==this.flagged?1:-1;
+		if(player){
+			if(this.flagged)
+				player.incFlag(this.isMine);
+			else
+				player.decFlag(this.isMine);
+		}
 	}
 
 	left(){
@@ -191,24 +239,21 @@ wss.on('connection', ws => {
 					else{
 						thisPlayer.chunkPos=[message.data.cx,message.data.cy];
 						let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
-						cell.click(thisPlayer);
 
+						if(cell.isMine){
+							reply(ws, "gameover", {
+								fakescore: thisPlayer.fakeScore().toString(),
+								score: thisPlayer.realScore().toString()
+							});
+							thisPlayer.reset();
+						}
+
+						cell.click(thisPlayer);
 						for(const player of getPlayersInRange(thisPlayer.chunkPos)){
 							reply(player.ws, cell.isMine?"explode":"click", {
 								cx:message.data.cx, cy:message.data.cy,
 								x:message.data.x, y:message.data.y
 							});
-
-							if(cell.isMine){
-								for(let x=Math.floor(message.data.cx-5/16);x<=message.data.cx+6/16;x++){
-									for(let y=Math.floor(message.data.cy-5/16);y<=message.data.cy+6/16;y++){
-										reply(player.ws, "loadchunk", {
-											chunk:getChunk(x,y).toJsonObj(),
-											x,y
-										});
-									}
-								}
-							}
 						}
 					}
 					break;

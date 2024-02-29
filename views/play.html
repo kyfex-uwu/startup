@@ -11,15 +11,16 @@
 		overflow:hidden;
 		--offsetX: 10;
 		--offsetY: 10;">
-	<div style="
-			height:100%;
-			background-color:#3335;
-			z-index:5;
-			position:relative;
-			opacity:0;
-			transition:opacity 1s;
-			pointer-events:none;">
-		</div>
+	<span style="
+			position:absolute;
+			right:0;
+			z-index:4;
+			margin:0.6rem 0.5rem;
+			padding:0.3rem 0.8rem;
+			background-color: #0009;
+			border-radius: 1rem;
+			outline:0.2rem solid #fff;
+			color:#fff;" id="score-element"></span>
 	</div>
 <script type="module">
 	const conn = new WebSocket(`ws${window.location.hostname=="localhost"?"":"s"}://${window.location.host}/websocket`);
@@ -446,6 +447,9 @@
 
 	//--
 
+	const scoreElement = document.getElementById("score-element");
+	let score=0;
+
 	const _waitingMessages={};
 	let currID=0;
 	function send(channel, data){
@@ -480,7 +484,7 @@
 				}break;
 				case "explode":{
 					let centerCell=(await waitForChunk(getChunk(message.data.cx, message.data.cy)))
-						.cells[message.data.cy][message.data.cx];
+						.cells[message.data.y][message.data.x];
 
 					//some graphic
 				}break;
@@ -517,6 +521,15 @@
 							}
 						}
 					}
+				}break;
+				case "score":{
+					scoreElement.textContent = "Score: "+message.data;
+				}break;
+				case "gameover":{
+					let fakescore = BigInt(message.data.fakescore);
+					let realscore = BigInt(message.data.score);
+					console.log("Score: "+fakescore+"\nReal Score: "+realscore+"\nBad Flags: "+
+						((fakescore-realscore)/20n));
 				}break;
 			}
 		}

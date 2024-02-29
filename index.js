@@ -36,6 +36,11 @@ app.get("/play", (req, res) => {
   res.send(containerize("/views/play.html"));
 });
 
+app.get("/user/:username", (req, res) => {
+  res.send(containerize("/views/user.html", {username:req.params.username.replace(/[^\w\d]/g, '')}));
+  //replaces non alphanumeric with empty
+});
+
 //--
 
 import { getWSS } from "./my_modules/gameLogic.js";
