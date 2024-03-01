@@ -58,33 +58,6 @@ class Cell{
 		if(this.revealed||this.flagged) return;
 		this.revealed=true;
 		//if(player&&player.score==0n) this.isMine=false;//need more criteria than this
-		if(this.isMine){
-			let chunksAffected={};
-			for(let y=-5;y<=5;y++){
-				for(let x=-5;x<=5;x++){
-					if(Math.sqrt(x**2+y**2)<=5.3){
-						let cellToExplode=this.offset(x,y);
-						if(!chunksAffected[cellToExplode.chunk.x])
-							chunksAffected[cellToExplode.chunk.x]={ [cellToExplode.chunk.y]:true };
-						else chunksAffected[cellToExplode.chunk.x][cellToExplode.chunk.y]=true;
-
-						cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=
-							DEFAULT_GENERATOR(cellToExplode.x,cellToExplode.y,cellToExplode.chunk);
-					}
-				}
-			}
-			for(const xData of Object.entries(chunksAffected)){
-				for(const y of Object.keys(xData[1])){
-					let pos = [xData[0],y];
-					for(const player of getPlayersInRange(pos))
-						reply(player.ws, "loadchunk", {
-							chunk:getChunk(pos[0],pos[1]).toJsonObj(),
-							x:pos[0],y:pos[1]
-						});
-				}
-			}
-			return;
-		}
 		if(player) player.incRevealed();
 
 		let hasMines=false;
@@ -101,6 +74,27 @@ class Cell{
 				}
 			}
 		}
+	}
+	explode(player){
+		const radius = Math.min(Number(player.realScore() / 40n), 75);
+		for(let y=-radius;y<=radius;y++){
+			for(let x=-radius;x<=radius;x++){
+				if(Math.sqrt(x**2+y**2)<=radius){
+					let cellToExplode=this.offset(x,y);
+					let newCellData=DEFAULT_GENERATOR(cellToExplode.x,cellToExplode.y,cellToExplode.chunk);
+					cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x]=newCellData.cell;
+					delete cellToExplode.chunk.features[cellToExplode.y*16+cellToExplode.x];
+					if(newCellData.feature)
+						cellToExplode.chunk.features[cellToExplode.y*16+cellToExplode.x]=newCellData.feature;
+				}
+			}
+		}
+		for(const player of getPlayersInRange([this.chunk.x,this.chunk.y]))
+			reply(player.ws, "explode", {
+				cx:this.chunk.x, cy:this.chunk.y,
+				x:this.x, y:this.y,
+				radius
+			});
 	}
 	tryFlag(player){
 		if(this.revealed) return;
@@ -168,24 +162,36 @@ class Chunk{
 				this.cells[y][x]=undefined;
 			}
 		}
+
+		this.features={};
 	}
 	load(generator){
-		for(let y=0;y<16;y++)
-			for(let x=0;x<16;x++)
-				this.cells[y][x]=generator(x,y,this);
+		for(let y=0;y<16;y++){
+			for(let x=0;x<16;x++){
+				let data = generator(x,y,this);
+				this.cells[y][x]=data.cell;
+				if(data.feature)
+					this.features[y*16+x]=data.feature;
+			}
+		}
 		this.loaded=true;
 	}
 
 	toJsonObj(){
 		return {
 			map:this.cells.map(r=>r.map(c=>c.toJsonObj())).flat(), 
-			features:{}
+			features:this.features
 		};
 	}
 }
 
 const chunks = {};
-const DEFAULT_GENERATOR = (x,y,chunk)=>new Cell(Math.random()<0.2,chunk,x,y);
+const DEFAULT_GENERATOR = (x,y,chunk)=>{
+	return {
+		cell:new Cell(Math.random()<0.2,chunk,x,y),
+		feature:Math.random()<0.01?"coin":undefined
+	};
+};
 function getChunk(x,y){
 	let toReturn = chunks[x+","+y];
 	if(toReturn){
@@ -197,6 +203,14 @@ function getChunk(x,y){
 	toReturn.load(DEFAULT_GENERATOR);
 	chunks[x+","+y]=toReturn;
 	return toReturn;
+}
+
+{
+	let firstChunk = getChunk(0,0);
+	for(let y=0;y<3;y++)
+		for(let x=0;x<3;x++)
+			firstChunk.cells[y][x].isMine=false;
+	firstChunk.cells[1][1].click();
 }
 
 //--
@@ -241,19 +255,20 @@ wss.on('connection', ws => {
 						let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
 
 						if(cell.isMine){
+							cell.explode(thisPlayer);
 							reply(ws, "gameover", {
 								fakescore: thisPlayer.fakeScore().toString(),
 								score: thisPlayer.realScore().toString()
 							});
 							thisPlayer.reset();
-						}
-
-						cell.click(thisPlayer);
-						for(const player of getPlayersInRange(thisPlayer.chunkPos)){
-							reply(player.ws, cell.isMine?"explode":"click", {
-								cx:message.data.cx, cy:message.data.cy,
-								x:message.data.x, y:message.data.y
-							});
+						}else{
+							cell.click(thisPlayer);
+							for(const player of getPlayersInRange(thisPlayer.chunkPos)){
+								reply(player.ws, "click", {
+									cx:message.data.cx, cy:message.data.cy,
+									x:message.data.x, y:message.data.y
+								});
+							}
 						}
 					}
 					break;

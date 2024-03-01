@@ -43,10 +43,7 @@
 
 	const board = document.getElementById("board");
 	const positionElement = document.getElementById("pos-element");
-	let boardOffset={x:Math.floor(Math.random()*999-499),y:Math.floor(Math.random()*999-499)};
-	board.style.setProperty("--offsetX", boardOffset.x);
-	board.style.setProperty("--offsetY", boardOffset.y);
-	positionElement.textContent=Math.round(-boardOffset.x)+", "+Math.round(boardOffset.y);
+	let boardOffset={x:0,y:0};
 
 	const MIN_DRAG_DIST=10;
 	let mouseDown=false;
@@ -185,6 +182,8 @@
 		}
 		get flagged(){ return this._flagged; }
 		async _updateVisual(){
+			if(!this.element) return;
+
 			this.element.innerHTML="";
 			this.element.classList.remove("revealed");
 
@@ -238,44 +237,6 @@
 			if(isDirect){
 				finishEarly();
 			}
-			/*
-			if(this.isMine){
-				boardOverlay.innerHTML = `<span style="
-						display: inline-block;
-						position: relative;
-						top: calc(50%);
-						transform: translateY(-50%);
-						background-color: #333;
-						padding: 1rem 2rem;
-						border-radius: 1rem;
-						outline: 0.3rem solid #555;">
-					You hit a mine!<br>
-					Final score: ${Math.round(score*100)/100}<br>
-					<span id="play-again">Play Again</span></span>`;
-				document.getElementById("play-again").addEventListener("click", ()=>{
-					finishEarly();
-
-					if(this.element) this.element.classList.add("exploded");
-					this.revealed=false;
-
-					earlyRunnable(()=>{
-						this._revealed=false;
-						this._flagged=false;
-						if(this.element){
-							this.element.classList.remove("exploded");
-							this._updateVisual();
-						}
-						restart();
-					},280)
-				});
-				this.canTurnOver=false;
-				this.turnOver();
-
-				boardOverlay.style.opacity=1;
-				boardOverlay.style["pointer-events"]="auto";
-				return;
-			}
-			*/
 
 			await this._updateCount();
 			if(this.count==0){
@@ -332,7 +293,6 @@
 			}
 		}
 
-		//these need to await
 		async left(){
 			if(this.x==0) return (await waitForChunk(getChunk(this.chunk.x-1,this.chunk.y))).cells[this.y][15];
 			return this.chunk.cells[this.y][this.x-1];
@@ -404,11 +364,11 @@
 			this.loadedPromise = new Promise(r=>resolve=r);
 			(async()=>{
 				this._updateVisual();
-				const cellData = await sendWithResponse("chunk", {x:this.x, y:this.y});
+				const chunkData = await sendWithResponse("chunk", {x:this.x, y:this.y});
 				for(let y=0;y<16;y++){
 					this.cells[y]=[];
 					for(let x=0;x<16;x++){
-						const thisCell = cellData.map[y*16+x];
+						const thisCell = chunkData.map[y*16+x];
 						let toPut = new Cell(thisCell&0b001, this, x, y);
 						if(thisCell&0b010) toPut.revealed=true;
 						if(thisCell&0b100) toPut.flagged=true;
@@ -458,6 +418,34 @@
 			this.element=undefined;
 		}
 	}
+	function refreshAroundChunk(chunkX,chunkY){
+		for(let y=-1;y<=1;y++){
+			for(let x=-1;x<=1;x++){
+				const maybeChunk=chunks[(chunkX+x)+","+(chunkY+y)];
+				if(!maybeChunk) continue;
+				if(y==x){
+					let cellToRefresh = maybeChunk.cells[(1-y)/2*15][(1-x)/2*15];
+					if(cellToRefresh&&cellToRefresh.count!=undefined){
+						cellToRefresh.count=undefined;
+						cellToRefresh._updateVisual();
+					}
+				}else{
+					for(let i=0;i<16;i++){
+						let cellToRefresh;
+						if(y==0){
+							cellToRefresh = maybeChunk.cells[i][(1-x)/2*15];
+						}else{
+							cellToRefresh = maybeChunk.cells[(1-y)/2*15][i];
+						}
+						if(cellToRefresh&&cellToRefresh.count!=undefined){
+							cellToRefresh.count=undefined;
+							cellToRefresh._updateVisual();
+						}
+					}
+				}
+			}
+		}
+	}
 
 	//--
 
@@ -500,6 +488,25 @@
 					let centerCell=(await waitForChunk(getChunk(message.data.cx, message.data.cy)))
 						.cells[message.data.y][message.data.x];
 
+					let affectedChunks={};
+					for(let y=-message.data.radius;y<=message.data.radius;y++){
+						for(let x=-message.data.radius;x<=message.data.radius;x++){
+							if(Math.sqrt(x**2+y**2)<=message.data.radius){
+								let cellToExplode=await centerCell.offset(x,y);
+								cellToExplode.chunk.cells[cellToExplode.y][cellToExplode.x].revealed=false;
+								affectedChunks[cellToExplode.chunk.x+","+cellToExplode.chunk.y]=
+									[cellToExplode.chunk.x,cellToExplode.chunk.y];
+							}
+						}
+					}
+					for(const chunk of Object.values(affectedChunks)){
+						let oldChunk=getChunk(chunk[0],chunk[1]);
+						delete chunks[chunk];
+						refreshAroundChunk(chunk[0],chunk[1]);
+						(await getChunk(chunk[0],chunk[1])).loadInElement();
+						oldChunk.unloadElement();
+					}
+
 					//some graphic
 				}break;
 				case "loadchunk":{
@@ -518,23 +525,7 @@
 					}
 
 					chunk.loadInElement();
-
-					for(let y=-1;y<=1;y++){
-						for(let x=-1;x<=1;x++){
-							if((y!=0&&x!=0)||y==x) continue;
-							const maybeChunk=chunks[(message.data.x+x)+","+(message.data.y+y)];
-							if(maybeChunk){
-								for(const row of maybeChunk.cells){
-									for(const cell of row){
-										if((cell.x==0||cell.x==15||cell.y==0||cell.y==15)&&cell.count!=undefined){
-											cell.count=undefined;
-											cell._updateVisual();
-										}
-									}
-								}
-							}
-						}
-					}
+					refreshAroundChunk(chunk.x,chunk.y);
 				}break;
 				case "score":{
 					scoreElement.textContent = "Score: "+message.data;
