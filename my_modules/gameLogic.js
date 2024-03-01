@@ -189,7 +189,7 @@ const chunks = {};
 const DEFAULT_GENERATOR = (x,y,chunk)=>{
 	return {
 		cell:new Cell(Math.random()<0.2,chunk,x,y),
-		feature:Math.random()<0.01?"coin":undefined
+		feature:Math.random()<0.004?"coin":undefined
 	};
 };
 function getChunk(x,y){
@@ -224,6 +224,18 @@ function getPlayersInRange(pos){
 	});
 }
 
+function processCellPos(message, player, id){
+	if(!Number.isInteger(message.data.cx)||!Number.isInteger(message.data.cy)||
+		!Number.isInteger(message.data.x)||!Number.isInteger(message.data.y)||
+		message.data.x<0||message.data.x>=16||message.data.y<0||message.data.y>=16){
+		reply(player.ws, "error", "Invalid coords", id);
+		return false;
+	}else{
+		player.chunkPos=[message.data.cx,message.data.cy];
+		return true;
+	}
+}
+
 const wss = new WebSocketServer({ noServer: true });
 const players={};//todo: sort players into mega chunks
 wss.on('connection', ws => {
@@ -240,56 +252,69 @@ wss.on('connection', ws => {
 			const message=JSON.parse(data.toString());
 			let id = message.id;
 			switch(message.channel){
-				case "chunk":
+				case "chunk":{
 					if(!Number.isInteger(message.data.x)||!Number.isInteger(message.data.y))
 						reply(ws, "error", "Invalid chunk coords", id);
 					else
 						reply(ws, "chunk", getChunk(message.data.x,message.data.y).toJsonObj(), id);
-					break;
-				case "click":
-					if(!Number.isInteger(message.data.cx)||!Number.isInteger(message.data.cy)||
-						!Number.isInteger(message.data.x)||!Number.isInteger(message.data.y))
-						reply(ws, "error", "Invalid coords", id);
-					else{
-						thisPlayer.chunkPos=[message.data.cx,message.data.cy];
-						let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
+					}break;
+				case "click":{
+					if(!processCellPos(message, thisPlayer, id)) break;
 
-						if(cell.isMine){
-							cell.explode(thisPlayer);
-							reply(ws, "gameover", {
-								fakescore: thisPlayer.fakeScore().toString(),
-								score: thisPlayer.realScore().toString()
+					let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
+
+					if(cell.isMine){
+						cell.explode(thisPlayer);
+						reply(ws, "gameover", {
+							fakescore: thisPlayer.fakeScore().toString(),
+							score: thisPlayer.realScore().toString()
+						});
+						thisPlayer.reset();
+					}else{
+						cell.click(thisPlayer);
+						for(const player of getPlayersInRange(thisPlayer.chunkPos)){
+							reply(player.ws, "click", {
+								cx:message.data.cx, cy:message.data.cy,
+								x:message.data.x, y:message.data.y
 							});
-							thisPlayer.reset();
-						}else{
-							cell.click(thisPlayer);
+						}
+					}
+					}break;
+				case "flag":{
+					if(!processCellPos(message, thisPlayer, id)) break;
+
+					let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
+					cell.tryFlag(thisPlayer);
+
+					for(const player of getPlayersInRange(thisPlayer.chunkPos)){
+						reply(player.ws, "flag", {
+							cx:message.data.cx, cy:message.data.cy,
+							x:message.data.x, y:message.data.y,
+							flag:cell.flagged
+						});
+					}
+					}break;
+				case "interact":{
+					if(!processCellPos(message, thisPlayer, id)) break;
+
+					let chunk=getChunk(message.data.cx, message.data.cy);
+					const feature = chunk.features[message.data.y*16+message.data.x];
+					switch(feature){
+						case "coin":
+							delete chunk.features[message.data.y*16+message.data.x];
+							//do smth
+
+							reply(thisPlayer.ws, "interact", true, id);
 							for(const player of getPlayersInRange(thisPlayer.chunkPos)){
-								reply(player.ws, "click", {
+								reply(player.ws, "fUpdate", {
 									cx:message.data.cx, cy:message.data.cy,
-									x:message.data.x, y:message.data.y
+									x:message.data.x, y:message.data.y,
+									feature:undefined
 								});
 							}
-						}
+							break;
 					}
-					break;
-				case "flag":
-					if(!Number.isInteger(message.data.cx)||!Number.isInteger(message.data.cy)||
-						!Number.isInteger(message.data.x)||!Number.isInteger(message.data.y))
-						reply(ws, "error", "Invalid coords", id);
-					else{
-						thisPlayer.chunkPos=[message.data.cx,message.data.cy];
-						let cell=getChunk(message.data.cx, message.data.cy).cells[message.data.y][message.data.x];
-						cell.tryFlag(thisPlayer);
-
-						for(const player of getPlayersInRange(thisPlayer.chunkPos)){
-							reply(player.ws, "flag", {
-								cx:message.data.cx, cy:message.data.cy,
-								x:message.data.x, y:message.data.y,
-								flag:cell.flagged
-							});
-						}
-					}
-					break;
+					}break;
 			}
 		}catch(e){}
 	});

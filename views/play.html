@@ -129,16 +129,33 @@
 		recalcBoards(xOffs,yOffs);
 	});
 
-	function getMine(){
+	function getIcon(path){
 		let toReturn = document.createElement("img");
-		toReturn.src="/public/mine.svg";
+		toReturn.src=`/public/${path}.svg`;
 		toReturn.classList.add("icon");
 		return toReturn;
 	}
-	function getFlag(){
-		let toReturn = document.createElement("img");
-		toReturn.src="/public/flag.svg";
-		toReturn.classList.add("icon");
+	function getCoin(cx, cy, x, y){
+		let toReturn = getIcon("coin");
+		toReturn.style.cursor="pointer";
+		let sparkler = setInterval(()=>{
+			if(toReturn.parentElement==null) clearInterval(sparkler);
+
+			const sparkle = document.createElement("span");
+			const time = Math.random()*1.5+0.5;
+			sparkle.classList.add("sparkle");
+			sparkle.style.transition="opacity "+time+"s";
+			sparkle.style.left=(Math.random()*200-50)+"%";
+			sparkle.style.top=(Math.random()*200-50)+"%";
+			setTimeout(()=>sparkle.style.opacity="0",0);
+
+			toReturn.parentElement.appendChild(sparkle);
+			setTimeout(()=>sparkle.remove(),time*1000);
+		},500);
+
+		toReturn.addEventListener("click", async e=>{
+			if(await sendWithResponse("interact", {cx, cy, x, y})) toReturn.remove();
+		});
 		return toReturn;
 	}
 
@@ -170,6 +187,8 @@
 			this.revealed=false;
 			this.flagged=false;
 			this.canTurnOver=true;
+
+			this.feature=undefined;
 		}
 		set revealed(bool){
 			this._revealed=bool;
@@ -190,13 +209,15 @@
 			if(this.revealed||this.element.classList.contains("exploded")){
 				this.element.classList.add("revealed");
 				if(this.isMine){
-					this.element.appendChild(getMine());
+					this.element.appendChild(getIcon("mine"));
 				}else{
 					await this._updateCount();
 					this.element.append(this.count==0?"":this.count);
+					if(this.feature=="coin")
+						this.element.appendChild(getCoin(this.chunk.x,this.chunk.y,this.x,this.y));
 				}
 			}else if(this.flagged){
-				this.element.appendChild(getFlag());
+				this.element.appendChild(getIcon("flag"));
 			}
 		}
 
@@ -372,6 +393,7 @@
 						let toPut = new Cell(thisCell&0b001, this, x, y);
 						if(thisCell&0b010) toPut.revealed=true;
 						if(thisCell&0b100) toPut.flagged=true;
+						if(chunkData.features[y*16+x]) toPut.feature=chunkData.features[y*16+x];
 						this.cells[y][x]=toPut;
 					}
 				}
@@ -535,6 +557,15 @@
 					let realscore = BigInt(message.data.score);
 					console.log("Score: "+fakescore+"\nReal Score: "+realscore+"\nBad Flags: "+
 						((fakescore-realscore)/20n));
+				}break;
+				case "fUpdate":{
+					let cell = (await waitForChunk(getChunk(message.data.cx, message.data.cy)))
+						.cells[message.data.y][message.data.x];
+					if(message.data.feature)
+						cell.feature=message.data.feature;
+					else
+						delete cell.feature;
+					cell._updateVisual();
 				}break;
 			}
 		}
