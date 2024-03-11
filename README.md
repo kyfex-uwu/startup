@@ -40,11 +40,11 @@ An online, globally multiplayer minesweeper. Play with your friends and compete 
  - [x] Prerequisite: A link to your GitHub startup repository prominently displayed on your application's home page
  - [x] Prerequisite: Notes in your startup Git repository README.md file documenting what you modified and added with this deliverable
  - [x] Prerequisite: At least 10 git commits spread consistently throughout the assignment period
- - [x] Create an HTTP service using Node.js and Express (its been express since day one baybeee)
- - [x] Frontend served up using Express static middleware (yuh huh (actually that part is commented out, rn its using amazon s3))
- - [x] Your frontend calls third party service endpoints (yep, look at the splash text on the main page (the white bar above the title))
- - [x] Your backend provides service endpoints (yuh huh, /api/user/[username] gets the user's data)
- - [x] Your frontend calls your service endpoints (yep, go to https://startup.kyfexuwu-byucs260.click/user/[username] to see this)
+ - [x] 40% Create an HTTP service using Node.js and Express (its been express since day one baybeee)
+ - [x] 10% Frontend served up using Express static middleware (yuh huh (actually that part is commented out, rn its using amazon s3))
+ - [x] 10% Your frontend calls third party service endpoints (yep, look at the splash text on the main page (the white bar above the title))
+ - [x] 20% Your backend provides service endpoints (yuh huh, /api/user/[username] gets the user's data)
+ - [x] 20% Your frontend calls your service endpoints (yep, go to https://startup.kyfexuwu-byucs260.click/user/[username] to see this)
 
 
 [notes](classwork/notes.md)
