@@ -6,9 +6,19 @@
 		font-size:2.5rem;
 	"><!--VAR username-->'s stats</span>
 <ul>
-	<li>Total score: #</li>
-	<li>Total cells revealed: #</li>
-	<li>Total flags placed: #</li>
-	<li>Total mines exploded: #</li>
-	<li>Highest scoring run: #</li>
+	<li>Total score: <span id="totalScore"></span></li>
+	<li>Total cells revealed: <span id="totalRevealed"></span></li>
+	<li>Total flags placed: <span id="totalFlagged"></span></li>
+	<li>Total mines exploded: <span id="totalMines"></span></li>
+	<li>Highest scoring run: <span id="highScore"></span></li>
 </ul>
+
+<script type="text/javascript">
+	fetch("/api/user/<!--VAR username-->").then(data=>data.json()).then(data=>{
+		for(const entry of Object.entries(data)){
+			let element = document.getElementById(entry[0]);
+			if(!element) continue;
+			element.textContent = entry[1];
+		}
+	});
+</script>

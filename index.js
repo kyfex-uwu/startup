@@ -2,7 +2,6 @@ import express from "express";
 import * as http from 'http';
 import fs from "fs";
 const app = express();
-const server = http.createServer(app);
 
 import cookieParser from "cookie-parser";
 app.use(cookieParser());
@@ -42,6 +41,24 @@ app.get("/user/:username", (req, res) => {
 });
 
 //--
+
+const api = express.Router();
+api.get("/user/:username", (req, res)=>{
+  let tempScore = Math.round(Math.random()*10000);
+  res.send({
+    totalScore:tempScore,
+    totalRevealed:Math.round(Math.random()*1000),
+    totalFlagged:Math.round(Math.random()*100),
+    totalMines:Math.round(Math.random()*10),
+    highScore:tempScore
+  });
+});
+
+app.use("/api", api);
+
+//--
+
+const server = http.createServer(app);
 
 import { getWSS } from "./my_modules/gameLogic.js";
 import { parse } from 'url';
