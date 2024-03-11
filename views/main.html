@@ -1,4 +1,5 @@
 <!--BODY-->
+<div id="splash" style="background-color:#fff; margin-top:1rem; border-radius:1rem; padding:0 0.7rem;">‍</div>
 <div style="
 	font-size: 3rem;
 	text-align: center;
@@ -8,3 +9,10 @@
 	</div>
 <div>text here</div>
 <a href="#" onclick="window.location='/user/'+[...new Array(Math.floor(Math.random()*16)).keys()].map(v=>Math.floor(Math.random()*36).toString(36)).join('')">Click here to visit a random (fake) user!</a> <- these will be stored in a database
+
+<script type="text/javascript">
+	let username="";
+	fetch("https://kyfexuwu.com/cs260-splash/"+username).then(data=>data.text()).then(text=>{
+		document.getElementById("splash").textContent = text;
+	});
+</script>
