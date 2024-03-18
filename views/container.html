@@ -62,7 +62,7 @@
 						window.userData=userData;
 					}
 				}
-			}
+			}catch{}
 			arrow.html`<span class="navbutton${token?" user-box":""}" style="float:right;"
 					onclick="window.location.assign(${token?`'/user/${userData.username}'`:"'/login'"})">${token?userData.username:"Login"}</span>`
 				(document.getElementById("navbar-container"));
