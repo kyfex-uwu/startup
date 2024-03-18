@@ -127,7 +127,13 @@ api.post("/login", (req, res)=>{
 });
 
 api.get("/verify-token/:token", (req, res)=>{
-  res.send({valid:!!reverseTokens[req.params.token]});
+  let toSend={
+    valid:!!reverseTokens[req.params.token]
+  };
+  if(toSend.valid){
+    toSend.username=reverseTokens[req.params.token]
+  };
+  res.send(toSend);
 });
 app.use("/api", api);
 

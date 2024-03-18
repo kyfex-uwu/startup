@@ -8,6 +8,7 @@
 		<script type="module">
 			import { reactive, html, watch } from 'https://esm.sh/@arrow-js/core';
 			window.arrow={ reactive, html, watch };
+			window.userData={};
 		</script>
 		<title><!--TITLE--></title>
 		<!--HEAD-->
@@ -52,11 +53,15 @@
 
 			let token = document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("token=")).slice("token=".length);
 			if(token){
-				if(!(await (await fetch("/api/verify-token/"+token)).json()).valid)
+				let userData = await (await fetch("/api/verify-token/"+token)).json();
+				if(!userData.valid)
 					token=undefined;
+				else{
+					window.userData=userData;
+				}
 			}
-			arrow.html`<span class="navbutton" style="float:right; display:${token?"none":"unset"}"
-					onclick="window.location.assign('/login')">Login</span>`
+			arrow.html`<span class="navbutton${token?" user-box":""}" style="float:right;"
+					onclick="window.location.assign(${token?`'/user/${userData.username}'`:"'/login'"})">${token?userData.username:"Login"}</span>`
 				(document.getElementById("navbar-container"));
 		</script>
 	</body>
