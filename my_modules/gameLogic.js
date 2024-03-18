@@ -40,7 +40,7 @@ class Player{
 	}
 
 	updateDB(hitMine=true){
-		if(!username) return;
+		if(!this.username) return;
 
 		let realScore = Number(this.realScore());
 		let revealed = Number(this.revealed);
