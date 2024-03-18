@@ -39,27 +39,30 @@ class Player{
 		return (this.goodflags-this.badflags)*10n+this.revealed;
 	}
 
+	updateDB(hitMine=true){
+		if(!username) return;
+
+		let realScore = Number(this.realScore());
+		let revealed = Number(this.revealed);
+		let flags = Number(this.goodflags+this.badflags);
+		DynStruct.user.get(this.username, (e, user)=>{
+			if(!e&&user){
+				DynStruct.user.update({username: this.username, stats:{
+					//todo:convert these to bigints
+			        tScore: user.attrs.stats.tScore+realScore,
+			        tRevealed: user.attrs.stats.tRevealed+revealed,
+			        tFlags: user.attrs.stats.tFlags+flags,
+			        tMines: user.attrs.stats.tMines+hitMine?1:0,
+			        highscore: Math.max(user.attrs.stats.highscore, realScore),
+				}},(e, user)=>{
+					console.log(e,user)
+					console.log("updated")
+				});
+			}
+		});
+	}
 	reset(updateDB=true){
-		if(updateDB){
-			let realScore = Number(this.realScore());
-			let revealed = Number(this.revealed);
-			let flags = Number(this.goodflags+this.badflags);
-			DynStruct.user.get(this.username, (e, user)=>{
-				if(!e&&user){
-					DynStruct.user.update({username: this.username, stats:{
-						//todo:convert these to bigints
-				        tScore: user.attrs.stats.tScore+realScore,
-				        tRevealed: user.attrs.stats.tRevealed+revealed,
-				        tFlags: user.attrs.stats.tFlags+flags,
-				        tMines: user.attrs.stats.tMines+1,
-				        highscore: Math.max(user.attrs.stats.highscore, realScore),
-					}},(e, user)=>{
-						console.log(e,user)
-						console.log("updated")
-					});
-				}
-			});
-		}
+		if(updateDB) this.updateDB();
 
 		this.goodflags=0n;
 		this.badflags=0n;
@@ -268,6 +271,7 @@ wss.on('connection', (ws, username) => {
 
 	ws.on('error', ws.close);
 	ws.on('close', ()=>{
+		thisPlayer.updateDB(false);
 		delete players[thisPlayer.id];
 	});
 
