@@ -51,13 +51,16 @@
 				navbar.style.left="-100%";
 			});
 
-			let token = document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("token=")).slice("token=".length);
-			if(token){
-				let userData = await (await fetch("/api/verify-token/"+token)).json();
-				if(!userData.valid)
-					token=undefined;
-				else{
-					window.userData=userData;
+			let token;
+			try{
+				token = document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("token=")).slice("token=".length);
+				if(token){
+					let userData = await (await fetch("/api/verify-token/"+token)).json();
+					if(!userData.valid)
+						token=undefined;
+					else{
+						window.userData=userData;
+					}
 				}
 			}
 			arrow.html`<span class="navbutton${token?" user-box":""}" style="float:right;"
