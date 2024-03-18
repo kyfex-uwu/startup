@@ -14,7 +14,7 @@
 	</head>
 	<body>
 		<main>
-			<div>
+			<div id="navbar-container">
 				<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="navbar-hamburger">
 					<path d="M4 18L20 18" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
 					<path d="M4 12L20 12" stroke="var(--cream)" stroke-linecap="round" stroke-width="3"/>
@@ -26,7 +26,7 @@
 					<span class="navbutton" onclick="window.location.assign('/about')">About</span>
 					<span class="navbutton" onclick="window.location.assign('/play')">Play</span>
 				</span>
-				<span class="navbutton" style="float:right;" onclick="window.location.assign('/login')">Login</span>
+				
 			</div>
 			<!--BODY-->
 		</main>
@@ -40,7 +40,7 @@
 				transform: translateX(-50%);
 				left: 50%;
 				"><a href="https://github.com/kyfex-uwu/startup" style="color:var(--cream)">GitHub</a></div>
-		<script>
+		<script type="module">
 			const navbar = document.getElementById("navbar");
 			document.getElementById("navbar-hamburger").onclick = e => {
 				navbar.style.left="0";
@@ -49,6 +49,15 @@
 			document.body.addEventListener("click", e => {
 				navbar.style.left="-100%";
 			});
+
+			let token = document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("token=")).slice("token=".length);
+			if(token){
+				if(!(await (await fetch("/api/verify-token/"+token)).json()).valid)
+					token=undefined;
+			}
+			arrow.html`<span class="navbutton" style="float:right; display:${token?"none":"unset"}"
+					onclick="window.location.assign('/login')">Login</span>`
+				(document.getElementById("navbar-container"));
 		</script>
 	</body>
 </html>

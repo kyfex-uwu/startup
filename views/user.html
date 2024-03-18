@@ -5,12 +5,12 @@
 <span style="
 		font-size:2.5rem;
 	"><!--VAR username-->'s stats</span>
-<ul>
-	<li>Total score: <span id="totalScore"></span></li>
-	<li>Total cells revealed: <span id="totalRevealed"></span></li>
-	<li>Total flags placed: <span id="totalFlagged"></span></li>
-	<li>Total mines exploded: <span id="totalMines"></span></li>
-	<li>Highest scoring run: <span id="highScore"></span></li>
+<ul id="data">
+	<li>Total score: <span id="tScore"></span></li>
+	<li>Total cells revealed: <span id="tRevealed"></span></li>
+	<li>Total flags placed: <span id="tFlags"></span></li>
+	<li>Total mines exploded: <span id="tMines"></span></li>
+	<li>Highest scoring run: <span id="highscore"></span></li>
 </ul>
 
 <script type="text/javascript">
@@ -20,5 +20,7 @@
 			if(!element) continue;
 			element.textContent = entry[1];
 		}
+	}).catch(()=>{
+		document.getElementById("data").textContent="No user found";
 	});
 </script>

@@ -1,12 +1,15 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 
+let DynStruct;
+
 class Player{
-	constructor(ws){
+	constructor(ws, username){
 		this.ws=ws;
+		this.username=username;
 		this.chunkPos=[0,0];
 		this.id=uuidv4();
-		this.reset();
+		this.reset(false);
 	}
 
 	incFlag(wasGood){
@@ -36,7 +39,28 @@ class Player{
 		return (this.goodflags-this.badflags)*10n+this.revealed;
 	}
 
-	reset(){
+	reset(updateDB=true){
+		if(updateDB){
+			let realScore = Number(this.realScore());
+			let revealed = Number(this.revealed);
+			let flags = Number(this.goodflags+this.badflags);
+			DynStruct.user.get(this.username, (e, user)=>{
+				if(!e&&user){
+					DynStruct.user.update({username: this.username, stats:{
+						//todo:convert these to bigints
+				        tScore: user.attrs.stats.tScore+realScore,
+				        tRevealed: user.attrs.stats.tRevealed+revealed,
+				        tFlags: user.attrs.stats.tFlags+flags,
+				        tMines: user.attrs.stats.tMines+1,
+				        highscore: Math.max(user.attrs.stats.highscore, realScore),
+					}},(e, user)=>{
+						console.log(e,user)
+						console.log("updated")
+					});
+				}
+			});
+		}
+
 		this.goodflags=0n;
 		this.badflags=0n;
 		this.revealed=0n;
@@ -238,8 +262,8 @@ function processCellPos(message, player, id){
 
 const wss = new WebSocketServer({ noServer: true });
 const players={};//todo: sort players into mega chunks
-wss.on('connection', ws => {
-	const thisPlayer = new Player(ws);
+wss.on('connection', (ws, username) => {
+	const thisPlayer = new Player(ws, username);
 	players[thisPlayer.id]=thisPlayer;
 
 	ws.on('error', ws.close);
@@ -321,4 +345,5 @@ wss.on('connection', ws => {
 });
 
 function getWSS(){ return wss; }
-export {getWSS}
+function initGame(s){ DynStruct = s; }
+export {getWSS, initGame}

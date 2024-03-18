@@ -41,7 +41,7 @@
 			width: 100%;">
 		infinisweeper
 	</div>
-	<form onsubmit="return login()&&false;">
+	<form onsubmit="login()" formtarget="dummyframe">
 		<div style="text-align:center;">
 			<span class="field">
 				<label for="username" style="margin-right:1rem;">Username:</label>
@@ -51,20 +51,34 @@
 				<label for="password" style="margin-right:1rem;">Password:</label>
 				<input type="password" name="password" placeholder="password" id="login-password">
 			</span>
-			<div>Captcha goes here (third party service)</div>
 		</div>
 		<div style="margin:auto; text-align:center;">
 			<span class="submitButton" tabindex=0 onclick="login()">Log In</span>
 			<span class="submitButton" tabindex=0 onclick="window.location.assign('/register')">Register</span>
 		</div>
-		<input type="submit" name="" style="display:none">
+		<input type="submit" name="" style="display:none" formtarget="dummyframe">
 	</form>
+	<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
 </div>
 
 <script type="text/javascript">
 	const username = document.getElementById("login-username");
 	const password = document.getElementById("login-password");
 	function login(){
-		console.log(`logging in\nusername:${username.value} password:${password.value}`);
+		fetch("/api/login", {
+			method: "POST",
+			body: JSON.stringify({
+				username:username.value,
+				password:password.value
+			}),
+			headers: {
+				"Content-type": "application/json"
+			}
+		}).then(r=>r.json()).then(json=>{
+			document.cookie = `token=${json.token}${window.location.hostname!="localhost"?";domain=startup.kyfexuwu-byucs260.click":""};samesite=strict;secure`;
+			window.location="/";
+		}).catch(()=>{
+			console.log("not logged in");
+		});
 	}
 </script>
