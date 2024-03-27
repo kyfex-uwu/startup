@@ -103,8 +103,11 @@ api.post("/register", (req, res)=>{
       highscore: 0,
     }
   }, {overwrite:false}, (e, user)=>{
-    //todo: differentiate between taken username and invalid data
-    if(e) res.sendStatus(400);
+    if(e.details)
+      res.status(400).send(e.details[0].message.includes("/.{8,}/")?
+        "Error: \"password\" must be at least 8 characters":e.details[0].message);
+    else if(e)
+      res.status(400).send("Username taken");
     else res.sendStatus(201);
   });
 });

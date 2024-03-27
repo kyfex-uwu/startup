@@ -65,6 +65,11 @@
 		</div>
 		<input type="submit" style="display:none" formtarget="dummyframe">
 	</form>
+	<div style="text-align:center; padding:2rem 0 0 0;"><span id="error" style="
+			background-color: #c26;
+			padding: 0.3rem 1rem;
+			border-radius: 1rem;
+			display: none;"></span></div>
 	<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
 </div>
 
@@ -73,9 +78,15 @@
 	const password = document.getElementById("login-password");
 	const confpass = document.getElementById("login-confpass");
 	const email = document.getElementById("login-email");
+	const errorSpan = document.getElementById("error");
 	function register(){
-		if(password.value!=confpass.value) return;
+		if(password.value!=confpass.value){
+			errorSpan.style.display="inline-block";
+			errorSpan.textContent = "Error: Password does not match";
+			return;
+		}
 
+		errorSpan.style.display="none";
 		fetch("/api/register", {
 			method: "POST",
 			body: JSON.stringify({
@@ -86,12 +97,13 @@
 			headers: {
 				"Content-type": "application/json"
 			}
-		}).then(r=>{
-			if(!r.ok) throw new Exception();
+		}).then(async r=>{
+			if(!r.ok) throw new Error(await r.text());
 
 			window.location="/login";
 		}).catch(e=>{
-			console.log(":(")
+			errorSpan.style.display="inline-block";
+			errorSpan.textContent = e;
 		});
 	}
 </script>

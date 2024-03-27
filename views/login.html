@@ -58,13 +58,20 @@
 		</div>
 		<input type="submit" name="" style="display:none" formtarget="dummyframe">
 	</form>
+	<div style="text-align:center; padding:2rem 0 0 0;"><span id="error" style="
+			background-color: #c26;
+			padding: 0.3rem 1rem;
+			border-radius: 1rem;
+			display: none;"></span></div>
 	<iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
 </div>
 
 <script type="text/javascript">
 	const username = document.getElementById("login-username");
 	const password = document.getElementById("login-password");
+	const errorSpan = document.getElementById("error");
 	function login(){
+		errorSpan.style.display="none";
 		fetch("/api/login", {
 			method: "POST",
 			body: JSON.stringify({
@@ -78,7 +85,8 @@
 			document.cookie = `token=${json.token}${window.location.hostname!="localhost"?";domain=startup.kyfexuwu-byucs260.click":""};samesite=strict;secure`;
 			window.location="/";
 		}).catch(()=>{
-			console.log("not logged in");
+			errorSpan.style.display="inline-block";
+			errorSpan.textContent = "Error: Could not authenticate";
 		});
 	}
 </script>
